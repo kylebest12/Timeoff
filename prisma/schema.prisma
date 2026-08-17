@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  CANCELLED
+}
+
+model User {
+  id                  String   @id @default(cuid())
+  name                String
+  email               String   @unique
+  passwordHash        String
+  role                Role     @default(STAFF)
+  startDate           DateTime @db.Date
+  annualAllowanceDays Float    @default(28)
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+
+  leaveRequests LeaveRequest[] @relation("RequesterRequests")
+  decisions     LeaveRequest[] @relation("DeciderRequests")
+}
+
+model LeaveType {
+  id                    String  @id @default(cuid())
+  name                  String  @unique
+  color                 String  @default("#2563eb")
+  countsAgainstAllowance Boolean @default(true)
+  archived              Boolean @default(false)
+
+  leaveRequests LeaveRequest[]
+}
+
+model LeaveRequest {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation("RequesterRequests", fields: [userId], references: [id])
+  leaveTypeId   String
+  leaveType     LeaveType     @relation(fields: [leaveTypeId], references: [id])
+  startDate     DateTime      @db.Date
+  endDate       DateTime      @db.Date
+  status        RequestStatus @default(PENDING)
+  reason        String?
+  decidedById   String?
+  decidedBy     User?         @relation("DeciderRequests", fields: [decidedById], references: [id])
+  decidedAt     DateTime?
+  decisionNote  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model PublicHoliday {
+  id   String   @id @default(cuid())
+  date DateTime @db.Date
+  name String
+
+  @@unique([date])
+}
+
+model Settings {
+  id                 Int    @id @default(1)
+  carryoverMaxDays    Float  @default(3)
+  trackingStartYear   Int    @default(2026)
+}
